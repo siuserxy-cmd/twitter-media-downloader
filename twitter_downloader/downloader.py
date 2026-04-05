@@ -1,11 +1,10 @@
 """
 媒体下载器 (灵感来源: gallery-dl + yt-dlp)
-支持图片直接下载 + yt-dlp 视频下载，带进度回调、去重、归档
+支持多平台：Twitter/X, Instagram, TikTok, YouTube, Bilibili
 """
 
 import os
 import re
-import json
 import hashlib
 import sqlite3
 from pathlib import Path
@@ -18,10 +17,51 @@ import yt_dlp
 from .scraper import TweetData, MediaItem, TwitterScraper
 
 
+# 支持的平台及其 URL 模式
+PLATFORM_PATTERNS = {
+    "twitter": [
+        r"(?:twitter\.com|x\.com)/\w+/status/\d+",
+        r"(?:twitter\.com|x\.com)/\w+/?$",
+        r"t\.co/\w+",
+    ],
+    "instagram": [
+        r"instagram\.com/p/[\w-]+",
+        r"instagram\.com/reel/[\w-]+",
+        r"instagram\.com/stories/[\w-]+",
+        r"instagram\.com/[\w.]+/?$",
+    ],
+    "tiktok": [
+        r"tiktok\.com/@[\w.]+/video/\d+",
+        r"tiktok\.com/t/\w+",
+        r"vm\.tiktok\.com/\w+",
+    ],
+    "youtube": [
+        r"youtube\.com/watch\?v=[\w-]+",
+        r"youtube\.com/shorts/[\w-]+",
+        r"youtu\.be/[\w-]+",
+    ],
+    "bilibili": [
+        r"bilibili\.com/video/[BA]V\w+",
+        r"b23\.tv/\w+",
+    ],
+    "reddit": [
+        r"reddit\.com/r/\w+/comments/\w+",
+        r"redd\.it/\w+",
+    ],
+}
+
+# 画质映射
+QUALITY_MAP = {
+    "best": "best[ext=mp4]/best",
+    "1080p": "best[height<=1080][ext=mp4]/best[height<=1080]",
+    "720p": "best[height<=720][ext=mp4]/best[height<=720]",
+    "480p": "best[height<=480][ext=mp4]/best[height<=480]",
+    "audio": "bestaudio[ext=m4a]/bestaudio",
+}
+
+
 class DownloadArchive:
-    """下载归档 (灵感来源: gallery-dl 的 archive 机制)
-    使用 SQLite 记录已下载的文件，避免重复下载
-    """
+    """下载归档，避免重复下载"""
 
     def __init__(self, db_path: str):
         self.db_path = db_path
@@ -31,7 +71,7 @@ class DownloadArchive:
             "  hash TEXT PRIMARY KEY,"
             "  url TEXT,"
             "  file_path TEXT,"
-            "  tweet_id TEXT,"
+            "  platform TEXT,"
             "  downloaded_at DATETIME DEFAULT CURRENT_TIMESTAMP"
             ")"
         )
@@ -42,11 +82,11 @@ class DownloadArchive:
         row = self.conn.execute("SELECT 1 FROM archive WHERE hash = ?", (h,)).fetchone()
         return row is not None
 
-    def add(self, url: str, file_path: str, tweet_id: str = ""):
+    def add(self, url: str, file_path: str, platform: str = ""):
         h = hashlib.sha256(url.encode()).hexdigest()
         self.conn.execute(
-            "INSERT OR IGNORE INTO archive (hash, url, file_path, tweet_id) VALUES (?, ?, ?, ?)",
-            (h, url, file_path, tweet_id),
+            "INSERT OR IGNORE INTO archive (hash, url, file_path, platform) VALUES (?, ?, ?, ?)",
+            (h, url, file_path, platform),
         )
         self.conn.commit()
 
@@ -55,7 +95,7 @@ class DownloadArchive:
 
 
 class MediaDownloader:
-    """统一媒体下载器"""
+    """统一媒体下载器 - 多平台支持"""
 
     def __init__(
         self,
@@ -63,43 +103,49 @@ class MediaDownloader:
         use_archive: bool = True,
         cookies: Optional[dict] = None,
         progress_callback: Optional[Callable] = None,
+        quality: str = "best",
     ):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.cookies = cookies or {}
         self.progress_callback = progress_callback
+        self.quality = quality
         self.scraper = TwitterScraper(cookies=cookies)
 
-        # 归档
         self.archive = None
         if use_archive:
             archive_path = self.output_dir / ".download_archive.db"
             self.archive = DownloadArchive(str(archive_path))
 
-        # requests session
         self.session = requests.Session()
         self.session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         })
 
     def _notify(self, event: str, **kwargs):
-        """发送进度通知"""
         if self.progress_callback:
             self.progress_callback({"event": event, **kwargs})
 
+    @staticmethod
+    def detect_platform(url: str) -> str:
+        """检测链接所属平台"""
+        url = url.strip().lower()
+        for platform, patterns in PLATFORM_PATTERNS.items():
+            for pattern in patterns:
+                if re.search(pattern, url):
+                    return platform
+        return "unknown"
+
     def _sanitize_filename(self, name: str) -> str:
-        """清理文件名"""
         name = re.sub(r'[<>:"/\\|?*]', "_", name)
         name = name.strip(". ")
         return name[:200] if name else "unknown"
 
     def _get_file_ext(self, url: str, media_type: str) -> str:
-        """从 URL 获取文件扩展名"""
         parsed = urlparse(url)
         path = unquote(parsed.path)
 
         if media_type == "image":
-            # Twitter 图片 URL 带 format 参数
             if "format=" in url:
                 fmt = re.search(r"format=(\w+)", url)
                 if fmt:
@@ -109,49 +155,50 @@ class MediaDownloader:
         elif media_type == "video":
             return ".mp4"
         elif media_type == "gif":
-            return ".mp4"  # Twitter GIF 实际是 mp4
+            return ".mp4"
         return Path(path).suffix or ".bin"
 
     def _build_filename(self, tweet: TweetData, media: MediaItem, index: int) -> str:
-        """构建文件名 (灵感来源: gallery-dl 的模板系统)"""
         screen_name = self._sanitize_filename(tweet.user_screen_name or "unknown")
         ext = self._get_file_ext(media.url, media.type)
         suffix = f"_{index}" if index > 0 else ""
-
         return f"{screen_name}_{tweet.tweet_id}{suffix}{ext}"
 
     def download_image(self, url: str, save_path: str) -> bool:
-        """直接下载图片"""
         try:
             resp = self.session.get(url, stream=True, timeout=60)
             resp.raise_for_status()
-
             total = int(resp.headers.get("content-length", 0))
             downloaded = 0
-
             with open(save_path, "wb") as f:
                 for chunk in resp.iter_content(chunk_size=8192):
                     f.write(chunk)
                     downloaded += len(chunk)
                     if total > 0:
-                        self._notify("progress", downloaded=downloaded, total=total)
-
+                        pct = int(downloaded / total * 100)
+                        self._notify("progress", downloaded=downloaded, total=total, percent=pct)
             return True
         except Exception as e:
             self._notify("error", message=f"Image download failed: {e}")
             return False
 
-    def download_video_ytdlp(self, tweet_url: str, save_path: str) -> bool:
-        """使用 yt-dlp 下载视频 (最强视频下载能力)"""
-        save_dir = str(Path(save_path).parent)
-        save_name = Path(save_path).stem
+    def download_via_ytdlp(self, url: str, save_dir: str, filename_prefix: str = "") -> dict:
+        """使用 yt-dlp 下载任意平台的媒体"""
+        fmt = QUALITY_MAP.get(self.quality, QUALITY_MAP["best"])
+
+        outtmpl = os.path.join(save_dir, f"{filename_prefix}%(title).80s_%(id)s.%(ext)s")
+        if filename_prefix:
+            outtmpl = os.path.join(save_dir, f"{filename_prefix}.%(ext)s")
 
         ydl_opts = {
-            "outtmpl": os.path.join(save_dir, f"{save_name}.%(ext)s"),
-            "format": "best[ext=mp4]/best",
+            "outtmpl": outtmpl,
+            "format": fmt,
             "quiet": True,
             "no_warnings": True,
             "merge_output_format": "mp4",
+            "writeinfojson": False,
+            "writethumbnail": False,
+            "progress_hooks": [self._ytdlp_progress_hook],
         }
 
         if self.cookies:
@@ -161,18 +208,90 @@ class MediaDownloader:
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([tweet_url])
-            return True
-        except Exception as e:
-            self._notify("error", message=f"yt-dlp download failed: {e}")
-            return False
+                info = ydl.extract_info(url, download=True)
+                if info is None:
+                    return {"success": False, "error": "No info extracted"}
 
-    def download_video_direct(self, url: str, save_path: str) -> bool:
-        """直接下载视频（当已有直链时）"""
-        return self.download_image(url, save_path)  # 同样的流式下载逻辑
+                filename = ydl.prepare_filename(info)
+                # yt-dlp 可能合并后改扩展名
+                if not os.path.exists(filename):
+                    base = os.path.splitext(filename)[0]
+                    for ext in [".mp4", ".webm", ".mkv", ".m4a", ".mp3"]:
+                        if os.path.exists(base + ext):
+                            filename = base + ext
+                            break
+
+                return {
+                    "success": True,
+                    "filename": os.path.basename(filename),
+                    "path": filename,
+                    "title": info.get("title", ""),
+                    "duration": info.get("duration", 0),
+                    "uploader": info.get("uploader", ""),
+                    "thumbnail": info.get("thumbnail", ""),
+                }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _ytdlp_progress_hook(self, d):
+        if d["status"] == "downloading":
+            pct = d.get("_percent_str", "").strip()
+            speed = d.get("_speed_str", "").strip()
+            self._notify("progress", message=f"Downloading... {pct} ({speed})")
+        elif d["status"] == "finished":
+            self._notify("status", message="Download finished, processing...")
+
+    def download_media(self, url: str) -> dict:
+        """统一入口 - 自动检测平台并下载"""
+        platform = self.detect_platform(url)
+        self._notify("status", message=f"Detected platform: {platform}")
+
+        if platform == "twitter":
+            return self.download_tweet(url)
+        else:
+            return self.download_generic(url, platform)
+
+    def download_generic(self, url: str, platform: str) -> dict:
+        """通用下载 - 通过 yt-dlp 支持 Instagram/TikTok/YouTube/Bilibili 等"""
+        if self.archive and self.archive.has(url):
+            self._notify("skip", message="Already downloaded")
+            return {"success": True, "files": [], "skipped": True}
+
+        platform_dir = self.output_dir / platform
+        platform_dir.mkdir(parents=True, exist_ok=True)
+
+        self._notify("download", message=f"Downloading from {platform}...")
+        result = self.download_via_ytdlp(url, str(platform_dir))
+
+        if result["success"]:
+            if self.archive:
+                self.archive.add(url, result.get("path", ""), platform)
+
+            self._notify("complete", message=f"Downloaded: {result['filename']}")
+            file_path = result.get("path", "")
+            return {
+                "success": True,
+                "platform": platform,
+                "title": result.get("title", ""),
+                "files": [{
+                    "filename": result["filename"],
+                    "path": file_path,
+                    "status": "success",
+                    "type": "video",
+                    "size": os.path.getsize(file_path) if file_path and os.path.exists(file_path) else 0,
+                }],
+            }
+        else:
+            self._notify("error", message=result.get("error", "Download failed"))
+            return {
+                "success": False,
+                "platform": platform,
+                "error": result.get("error", "Download failed"),
+                "files": [],
+            }
 
     def download_tweet(self, url: str) -> dict:
-        """下载单条推文的所有媒体"""
+        """下载 Twitter 推文媒体"""
         tweet_id = TwitterScraper.extract_tweet_id(url)
         if not tweet_id:
             return {"success": False, "error": "Invalid Twitter URL", "files": []}
@@ -181,7 +300,6 @@ class MediaDownloader:
         tweet = self.scraper.get_tweet(tweet_id)
 
         if not tweet:
-            # 如果 API 获取失败，尝试 yt-dlp 直接下载视频
             self._notify("status", message="API failed, trying yt-dlp directly...")
             return self._fallback_ytdlp(url, tweet_id)
 
@@ -189,21 +307,16 @@ class MediaDownloader:
             return {"success": False, "error": "No media found in this tweet", "files": []}
 
         results = []
-        tweet_dir = self.output_dir / self._sanitize_filename(tweet.user_screen_name or "unknown")
+        tweet_dir = self.output_dir / "twitter" / self._sanitize_filename(tweet.user_screen_name or "unknown")
         tweet_dir.mkdir(parents=True, exist_ok=True)
 
         for i, media in enumerate(tweet.media):
             filename = self._build_filename(tweet, media, i)
             save_path = str(tweet_dir / filename)
 
-            # 检查归档
             if self.archive and self.archive.has(media.url):
                 self._notify("skip", message=f"Already downloaded: {filename}")
-                results.append({
-                    "filename": filename,
-                    "status": "skipped",
-                    "type": media.type,
-                })
+                results.append({"filename": filename, "status": "skipped", "type": media.type})
                 continue
 
             self._notify("download", message=f"Downloading {media.type}: {filename}")
@@ -212,15 +325,17 @@ class MediaDownloader:
             if media.type == "image":
                 success = self.download_image(media.url, save_path)
             elif media.type in ("video", "gif"):
-                # 优先使用直链下载（更快），失败则用 yt-dlp
-                success = self.download_video_direct(media.url, save_path)
+                success = self.download_image(media.url, save_path)  # direct download
                 if not success:
                     tweet_url = f"https://x.com/i/status/{tweet_id}"
-                    success = self.download_video_ytdlp(tweet_url, save_path)
+                    r = self.download_via_ytdlp(tweet_url, str(tweet_dir), f"{tweet.user_screen_name}_{tweet_id}")
+                    success = r.get("success", False)
+                    if success:
+                        save_path = r.get("path", save_path)
 
             if success:
                 if self.archive:
-                    self.archive.add(media.url, save_path, tweet.tweet_id)
+                    self.archive.add(media.url, save_path, "twitter")
                 results.append({
                     "filename": filename,
                     "path": save_path,
@@ -230,14 +345,11 @@ class MediaDownloader:
                 })
                 self._notify("complete", message=f"Downloaded: {filename}")
             else:
-                results.append({
-                    "filename": filename,
-                    "status": "failed",
-                    "type": media.type,
-                })
+                results.append({"filename": filename, "status": "failed", "type": media.type})
 
         return {
             "success": True,
+            "platform": "twitter",
             "tweet_id": tweet.tweet_id,
             "user": tweet.user_screen_name,
             "text": tweet.text[:100],
@@ -246,10 +358,9 @@ class MediaDownloader:
         }
 
     def download_user_media(self, url: str, count: int = 20) -> dict:
-        """下载用户媒体时间线"""
+        """下载用户媒体时间线（仅 Twitter）"""
         screen_name = TwitterScraper.extract_username(url)
         if not screen_name:
-            # 也可能直接传入用户名
             screen_name = url.strip().lstrip("@")
 
         if not screen_name:
@@ -263,80 +374,61 @@ class MediaDownloader:
 
         all_results = []
         for tweet in tweets:
-            result = self._download_tweet_media(tweet)
-            all_results.extend(result)
+            tweet_dir = self.output_dir / "twitter" / self._sanitize_filename(tweet.user_screen_name or "unknown")
+            tweet_dir.mkdir(parents=True, exist_ok=True)
+
+            for i, media in enumerate(tweet.media):
+                filename = self._build_filename(tweet, media, i)
+                save_path = str(tweet_dir / filename)
+
+                if self.archive and self.archive.has(media.url):
+                    continue
+
+                success = False
+                if media.type == "image":
+                    success = self.download_image(media.url, save_path)
+                elif media.type in ("video", "gif"):
+                    success = self.download_image(media.url, save_path)
+
+                if success and self.archive:
+                    self.archive.add(media.url, save_path, "twitter")
+
+                all_results.append({
+                    "filename": filename,
+                    "status": "success" if success else "failed",
+                    "type": media.type,
+                })
 
         return {
             "success": True,
+            "platform": "twitter",
             "user": screen_name,
             "tweets_count": len(tweets),
             "files": all_results,
         }
 
-    def _download_tweet_media(self, tweet: TweetData) -> list:
-        """下载一条推文的媒体"""
-        results = []
-        tweet_dir = self.output_dir / self._sanitize_filename(tweet.user_screen_name or "unknown")
-        tweet_dir.mkdir(parents=True, exist_ok=True)
-
-        for i, media in enumerate(tweet.media):
-            filename = self._build_filename(tweet, media, i)
-            save_path = str(tweet_dir / filename)
-
-            if self.archive and self.archive.has(media.url):
-                continue
-
-            success = False
-            if media.type == "image":
-                success = self.download_image(media.url, save_path)
-            elif media.type in ("video", "gif"):
-                success = self.download_video_direct(media.url, save_path)
-
-            if success and self.archive:
-                self.archive.add(media.url, save_path, tweet.tweet_id)
-
-            results.append({
-                "filename": filename,
-                "status": "success" if success else "failed",
-                "type": media.type,
-            })
-
-        return results
-
     def _fallback_ytdlp(self, url: str, tweet_id: str) -> dict:
-        """当 API 失败时，直接用 yt-dlp 下载"""
-        save_dir = str(self.output_dir / "yt-dlp")
+        save_dir = str(self.output_dir / "twitter" / "yt-dlp")
         os.makedirs(save_dir, exist_ok=True)
+        result = self.download_via_ytdlp(url, save_dir, tweet_id)
 
-        ydl_opts = {
-            "outtmpl": os.path.join(save_dir, f"{tweet_id}.%(ext)s"),
-            "format": "best[ext=mp4]/best",
-            "quiet": True,
-            "merge_output_format": "mp4",
-            "writeinfojson": False,
-        }
-
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-
+        if result["success"]:
             return {
                 "success": True,
+                "platform": "twitter",
                 "tweet_id": tweet_id,
                 "files": [{
-                    "filename": os.path.basename(filename),
-                    "path": filename,
+                    "filename": result["filename"],
+                    "path": result.get("path", ""),
                     "status": "success",
                     "type": "video",
                 }],
             }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"All download methods failed: {e}",
-                "files": [],
-            }
+        return {
+            "success": False,
+            "error": f"All methods failed: {result.get('error', '')}",
+            "files": [],
+        }
 
     def close(self):
         self.scraper.close()
