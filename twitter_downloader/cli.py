@@ -1,6 +1,7 @@
 """命令行接口"""
 
 import argparse
+import os
 import sys
 
 from .downloader import MediaDownloader
@@ -23,10 +24,11 @@ def main():
     if args.web:
         from .web import create_app
         app = create_app(output_dir=args.output)
+        port = int(os.environ.get("PORT", args.port))
         print(f"\n  Twitter Media Downloader")
-        print(f"  Web GUI: http://127.0.0.1:{args.port}")
+        print(f"  Web GUI: http://127.0.0.1:{port}")
         print(f"  Output:  {args.output}\n")
-        app.run(host="0.0.0.0", port=args.port, debug=False)
+        app.run(host="0.0.0.0", port=port, debug=False)
         return
 
     if not args.url:
