@@ -877,9 +877,9 @@ textarea.cookie-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-g
             </div>
         </div>
         <div class="shortcuts">
-            <kbd class="kbd">Ctrl+V</kbd> auto-paste &nbsp;
-            <kbd class="kbd">Enter</kbd> download &nbsp;
-            <kbd class="kbd">Ctrl+B</kbd> batch
+            <kbd class="kbd">Ctrl+V</kbd> <span id="scAutoPaste">auto-paste</span> &nbsp;
+            <kbd class="kbd">Enter</kbd> <span id="scDownload">download</span> &nbsp;
+            <kbd class="kbd">Ctrl+B</kbd> <span id="scBatch">batch</span>
         </div>
         <div id="queueSection" style="margin-top:18px">
             <div class="empty" id="emptyQueue"><div class="icon">&#8681;</div><p>Paste a link to start downloading</p></div>
@@ -895,23 +895,23 @@ textarea.cookie-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-g
                 <button class="btn btn-primary btn-sm" onclick="browseUserMedia()" id="browseBtn">Browse</button>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-                <span style="color:var(--t2);font-size:12px;line-height:28px">Favorites:</span>
+                <span style="color:var(--t2);font-size:12px;line-height:28px" id="favLabel">Favorites:</span>
                 <div id="favChips"></div>
-                <button class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:11px" onclick="addFavorite()">+ Add</button>
+                <button class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:11px" onclick="addFavorite()" id="btnAddFavBrowse">+ Add</button>
             </div>
         </div>
         <div id="browseLoading" style="display:none;text-align:center;padding:40px;color:var(--t2)">
             <div class="spin" style="width:28px;height:28px;border-width:3px"></div>
-            <p style="margin-top:12px">Loading media...</p>
+            <p style="margin-top:12px" id="loadingMediaText">Loading media...</p>
         </div>
         <div id="browseResults" style="display:none">
             <div class="grid-bar">
                 <div>
                     <span id="browseCount" style="font-size:14px;font-weight:700"></span>
-                    <span style="color:var(--t2);font-size:13px;margin-left:4px">items found</span>
+                    <span style="color:var(--t2);font-size:13px;margin-left:4px" id="itemsFoundLabel">items found</span>
                 </div>
                 <div style="display:flex;gap:6px">
-                    <button class="btn btn-outline btn-sm" onclick="toggleSelectAll()">Select All</button>
+                    <button class="btn btn-outline btn-sm" onclick="toggleSelectAll()" id="btnSelectAll">Select All</button>
                     <button class="btn btn-primary btn-sm" onclick="downloadSelected()" id="dlSelectedBtn">Download Selected (0)</button>
                 </div>
             </div>
@@ -923,15 +923,15 @@ textarea.cookie-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-g
     <!-- PAGE: History -->
     <div class="page" id="page-history">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <h2 style="font-size:16px">Download History</h2>
-            <button class="btn btn-outline btn-sm" onclick="loadFileList()">View Files</button>
+            <h2 style="font-size:16px" id="historyTitle">Download History</h2>
+            <button class="btn btn-outline btn-sm" onclick="loadFileList()" id="btnViewFiles">View Files</button>
         </div>
         <div id="historyList"></div>
         <div class="empty" id="emptyHistory"><div class="icon">&#128196;</div><p>No downloads yet</p></div>
         <div id="fileListSection" style="display:none;margin-top:16px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                <h3 style="font-size:14px">Server Files</h3>
-                <button class="btn btn-primary btn-sm" onclick="downloadAsZip()">Download as ZIP</button>
+                <h3 style="font-size:14px" id="serverFilesTitle">Server Files</h3>
+                <button class="btn btn-primary btn-sm" onclick="downloadAsZip()" id="btnDlZip">Download as ZIP</button>
             </div>
             <div id="fileList"></div>
         </div>
@@ -940,40 +940,41 @@ textarea.cookie-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-g
     <!-- PAGE: Stats -->
     <div class="page" id="page-stats">
         <div class="stats-grid">
-            <div class="stat-card"><div class="stat-num" id="statDownloads">0</div><div class="stat-label">Total Downloads</div></div>
-            <div class="stat-card"><div class="stat-num" id="statFiles">0</div><div class="stat-label">Files Saved</div></div>
-            <div class="stat-card"><div class="stat-num" id="statSize">0 B</div><div class="stat-label">Total Size</div></div>
-            <div class="stat-card"><div class="stat-num" id="statPlatforms">0</div><div class="stat-label">Platforms Used</div></div>
+            <div class="stat-card"><div class="stat-num" id="statDownloads">0</div><div class="stat-label" id="labelTotalDl">Total Downloads</div></div>
+            <div class="stat-card"><div class="stat-num" id="statFiles">0</div><div class="stat-label" id="labelTotalFiles">Files Saved</div></div>
+            <div class="stat-card"><div class="stat-num" id="statSize">0 B</div><div class="stat-label" id="labelTotalSize">Total Size</div></div>
+            <div class="stat-card"><div class="stat-num" id="statPlatforms">0</div><div class="stat-label" id="labelPlatUsed">Platforms Used</div></div>
         </div>
-        <h3 style="font-size:14px;margin-bottom:12px">By Platform</h3>
+        <h3 style="font-size:14px;margin-bottom:12px" id="byPlatformTitle">By Platform</h3>
         <div class="plat-stats" id="platStats"><span style="color:var(--t2);font-size:13px">No data yet</span></div>
     </div>
 
     <!-- PAGE: Settings -->
     <div class="page" id="page-settings">
         <div class="card">
-            <div class="setting-row"><div class="setting-info"><h3>Cookie Import</h3><p>Import browser cookies to access private/age-restricted content</p></div></div>
+            <div class="setting-row"><div class="setting-info"><h3 id="setCookieTitle">Cookie Import</h3><p id="setCookieDesc">Import browser cookies to access private/age-restricted content</p></div></div>
             <textarea class="cookie-inp" id="cookieInput" placeholder="Paste cookies here: name1=value1; name2=value2; ..."></textarea>
             <div class="btn-row" style="margin-top:8px">
-                <button class="btn btn-primary btn-sm" onclick="saveCookies()">Save Cookies</button>
-                <button class="btn btn-outline btn-sm" onclick="clearCookies()">Clear</button>
+                <button class="btn btn-primary btn-sm" onclick="saveCookies()" id="btnSaveCookie">Save Cookies</button>
+                <button class="btn btn-outline btn-sm" onclick="clearCookies()" id="btnClearCookie">Clear</button>
             </div>
             <div id="cookieStatus" style="font-size:12px;color:var(--t2);margin-top:6px"></div>
         </div>
         <div class="card">
-            <div class="setting-row" style="border:none"><div class="setting-info"><h3>Saved Users / Favorites</h3><p>Quick access to your favorite accounts</p></div></div>
+            <div class="setting-row" style="border:none"><div class="setting-info"><h3 id="setFavTitle">Saved Users / Favorites</h3><p id="setFavDesc">Quick access to your favorite accounts</p></div></div>
             <div class="fav-list" id="favList"></div>
             <div class="btn-row" style="margin-top:10px">
                 <input type="text" class="inp" id="newFavInput" placeholder="@username" style="font-size:13px;padding:8px 12px;padding-right:12px">
-                <button class="btn btn-primary btn-sm" onclick="addFavoriteFromInput()">Add</button>
+                <button class="btn btn-primary btn-sm" onclick="addFavoriteFromInput()" id="btnAddFav">Add</button>
             </div>
         </div>
         <div class="card">
-            <div class="setting-row" style="border:none"><div class="setting-info"><h3>Keyboard Shortcuts</h3><p>Quick actions for power users</p></div></div>
-            <div style="font-size:13px;color:var(--t2);line-height:2.2">
-                <kbd class="kbd">Enter</kbd> Start download<br>
-                <kbd class="kbd">Ctrl+B</kbd> Open batch download<br>
-                <kbd class="kbd">Ctrl+V</kbd> Auto-paste URL<br>
+            <div class="setting-row" style="border:none"><div class="setting-info"><h3 id="setKbTitle">Keyboard Shortcuts</h3><p id="setKbDesc">Quick actions for power users</p></div></div>
+            <div style="font-size:13px;color:var(--t2);line-height:2.2" id="kbList">
+                <kbd class="kbd">Enter</kbd> <span>Start download</span><br>
+                <kbd class="kbd">Ctrl+B</kbd> <span>Open batch download</span><br>
+                <kbd class="kbd">Ctrl+V</kbd> <span>Auto-paste URL</span><br>
+                <kbd class="kbd">1-5</kbd> <span>Switch pages (on nav)</span><br>
             </div>
         </div>
     </div>
@@ -988,12 +989,12 @@ textarea.cookie-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-g
 <!-- Batch Modal -->
 <div class="modal-bg" id="batchModal">
     <div class="modal">
-        <h2>Batch Download</h2>
-        <p>Paste multiple URLs, one per line</p>
+        <h2 id="batchTitle">Batch Download</h2>
+        <p id="batchDesc">Paste multiple URLs, one per line</p>
         <textarea id="batchInput" placeholder="https://x.com/user/status/123&#10;https://www.instagram.com/p/xxx&#10;https://www.tiktok.com/@user/video/123"></textarea>
         <div class="modal-acts">
-            <button class="mbtn-cancel" onclick="closeBatchModal()">Cancel</button>
-            <button class="mbtn-ok" onclick="startBatchDownload()">Start Download</button>
+            <button class="mbtn-cancel" onclick="closeBatchModal()" id="btnBatchCancel">Cancel</button>
+            <button class="mbtn-ok" onclick="startBatchDownload()" id="btnBatchStart">Start Download</button>
         </div>
     </div>
 </div>
@@ -1009,8 +1010,8 @@ let favorites=JSON.parse(localStorage.getItem('favorites')||'[]');
 
 // ===== i18n =====
 const L={
-en:{subtitle:"All-in-one media download tool",download:"Download",browse_user:"Browse User",history:"History",stats:"Stats",settings:"Settings",single:"Single",timeline:"Timeline",dl:"Download",batch:"Batch",ph:"Paste any video/image link here...",empty_q:"Paste a link to start downloading",empty_h:"No downloads yet",empty_b:"Enter a username to browse their media",downloading:"Downloading...",done:"Done",failed:"Failed",dl_complete:"Download complete!",dl_failed:"Download failed",dl_selected:"Download Selected",browse_ph:"Enter Twitter @username...",cookie_saved:"Cookies saved",cookie_cleared:"Cookies cleared",added_fav:"Added to favorites",removed_fav:"Removed from favorites",no_data:"No data yet",drop:"Drop URL here",cancel:"Cancel",start:"Start Download"},
-zh:{subtitle:"\u5168\u5e73\u53f0\u5a92\u4f53\u4e0b\u8f7d\u5de5\u5177",download:"\u4e0b\u8f7d",browse_user:"\u6d4f\u89c8\u535a\u4e3b",history:"\u5386\u53f2\u8bb0\u5f55",stats:"\u7edf\u8ba1",settings:"\u8bbe\u7f6e",single:"\u5355\u6761",timeline:"\u65f6\u95f4\u7ebf",dl:"\u4e0b\u8f7d",batch:"\u6279\u91cf",ph:"\u7c98\u8d34\u4efb\u610f\u89c6\u9891/\u56fe\u7247\u94fe\u63a5...",empty_q:"\u7c98\u8d34\u94fe\u63a5\u5f00\u59cb\u4e0b\u8f7d",empty_h:"\u6682\u65e0\u4e0b\u8f7d\u8bb0\u5f55",empty_b:"\u8f93\u5165\u7528\u6237\u540d\u6d4f\u89c8\u5176\u5a92\u4f53\u5185\u5bb9",downloading:"\u4e0b\u8f7d\u4e2d...",done:"\u5b8c\u6210",failed:"\u5931\u8d25",dl_complete:"\u4e0b\u8f7d\u5b8c\u6210\uff01",dl_failed:"\u4e0b\u8f7d\u5931\u8d25",dl_selected:"\u4e0b\u8f7d\u9009\u4e2d",browse_ph:"\u8f93\u5165 Twitter @\u7528\u6237\u540d...",cookie_saved:"Cookie \u5df2\u4fdd\u5b58",cookie_cleared:"Cookie \u5df2\u6e05\u9664",added_fav:"\u5df2\u6dfb\u52a0\u6536\u85cf",removed_fav:"\u5df2\u79fb\u9664\u6536\u85cf",no_data:"\u6682\u65e0\u6570\u636e",drop:"\u62d6\u653e\u94fe\u63a5\u5230\u8fd9\u91cc",cancel:"\u53d6\u6d88",start:"\u5f00\u59cb\u4e0b\u8f7d"}
+en:{subtitle:"All-in-one media download tool",download:"Download",browse_user:"Browse User",history:"History",stats:"Stats",settings:"Settings",single:"Single",timeline:"Timeline",dl:"Download",batch:"Batch",ph:"Paste any video/image link here...",empty_q:"Paste a link to start downloading",empty_h:"No downloads yet",empty_b:"Enter a username to browse their media",downloading:"Downloading...",done:"Done",failed:"Failed",dl_complete:"Download complete!",dl_failed:"Download failed",dl_selected:"Download Selected",browse_ph:"Enter Twitter @username...",cookie_saved:"Cookies saved",cookie_cleared:"Cookies cleared",added_fav:"Added to favorites",removed_fav:"Removed from favorites",no_data:"No data yet",drop:"Drop URL here",cancel:"Cancel",start:"Start Download",cookie_title:"Cookie Import",cookie_desc:"Import browser cookies to access private/age-restricted content",cookie_ph:"Paste cookies here: name1=value1; name2=value2; ...",save_cookies:"Save Cookies",clear:"Clear",fav_title:"Saved Users / Favorites",fav_desc:"Quick access to your favorite accounts",no_fav:"No favorites yet",add:"Add",kb_title:"Keyboard Shortcuts",kb_desc:"Quick actions for power users",kb_enter:"Start download",kb_batch:"Open batch download",kb_paste:"Auto-paste URL",kb_nav:"Switch pages (on nav)",dl_history:"Download History",view_files:"View Files",server_files:"Server Files",dl_zip:"Download as ZIP",by_platform:"By Platform",total_dl:"Total Downloads",total_files:"Files Saved",total_size:"Total Size",plat_used:"Platforms Used",items_found:"items found",select_all:"Select All",loading_media:"Loading media...",favorites_label:"Favorites:",add_fav:"+ Add",auto_paste:"auto-paste",shortcut_dl:"download",shortcut_batch:"batch"},
+zh:{subtitle:"\u5168\u5e73\u53f0\u5a92\u4f53\u4e0b\u8f7d\u5de5\u5177",download:"\u4e0b\u8f7d",browse_user:"\u6d4f\u89c8\u535a\u4e3b",history:"\u5386\u53f2\u8bb0\u5f55",stats:"\u7edf\u8ba1",settings:"\u8bbe\u7f6e",single:"\u5355\u6761",timeline:"\u65f6\u95f4\u7ebf",dl:"\u4e0b\u8f7d",batch:"\u6279\u91cf",ph:"\u7c98\u8d34\u4efb\u610f\u89c6\u9891/\u56fe\u7247\u94fe\u63a5...",empty_q:"\u7c98\u8d34\u94fe\u63a5\u5f00\u59cb\u4e0b\u8f7d",empty_h:"\u6682\u65e0\u4e0b\u8f7d\u8bb0\u5f55",empty_b:"\u8f93\u5165\u7528\u6237\u540d\u6d4f\u89c8\u5176\u5a92\u4f53\u5185\u5bb9",downloading:"\u4e0b\u8f7d\u4e2d...",done:"\u5b8c\u6210",failed:"\u5931\u8d25",dl_complete:"\u4e0b\u8f7d\u5b8c\u6210\uff01",dl_failed:"\u4e0b\u8f7d\u5931\u8d25",dl_selected:"\u4e0b\u8f7d\u9009\u4e2d",browse_ph:"\u8f93\u5165 Twitter @\u7528\u6237\u540d...",cookie_saved:"Cookie \u5df2\u4fdd\u5b58",cookie_cleared:"Cookie \u5df2\u6e05\u9664",added_fav:"\u5df2\u6dfb\u52a0\u6536\u85cf",removed_fav:"\u5df2\u79fb\u9664\u6536\u85cf",no_data:"\u6682\u65e0\u6570\u636e",drop:"\u62d6\u653e\u94fe\u63a5\u5230\u8fd9\u91cc",cancel:"\u53d6\u6d88",start:"\u5f00\u59cb\u4e0b\u8f7d",cookie_title:"Cookie \u5bfc\u5165",cookie_desc:"\u5bfc\u5165\u6d4f\u89c8\u5668 Cookie \u4ee5\u8bbf\u95ee\u79c1\u5bc6/\u5e74\u9f84\u9650\u5236\u5185\u5bb9",cookie_ph:"\u5728\u6b64\u7c98\u8d34 Cookie: name1=value1; name2=value2; ...",save_cookies:"\u4fdd\u5b58 Cookie",clear:"\u6e05\u9664",fav_title:"\u6536\u85cf\u7528\u6237",fav_desc:"\u5feb\u901f\u8bbf\u95ee\u4f60\u6536\u85cf\u7684\u8d26\u53f7",no_fav:"\u6682\u65e0\u6536\u85cf",add:"\u6dfb\u52a0",kb_title:"\u952e\u76d8\u5feb\u6377\u952e",kb_desc:"\u9ad8\u7ea7\u7528\u6237\u5feb\u6377\u64cd\u4f5c",kb_enter:"\u5f00\u59cb\u4e0b\u8f7d",kb_batch:"\u6253\u5f00\u6279\u91cf\u4e0b\u8f7d",kb_paste:"\u81ea\u52a8\u7c98\u8d34\u94fe\u63a5",kb_nav:"\u5207\u6362\u9875\u9762\uff08\u5bfc\u822a\u680f\uff09",dl_history:"\u4e0b\u8f7d\u5386\u53f2",view_files:"\u67e5\u770b\u6587\u4ef6",server_files:"\u670d\u52a1\u5668\u6587\u4ef6",dl_zip:"\u6253\u5305\u4e0b\u8f7d ZIP",by_platform:"\u6309\u5e73\u53f0\u7edf\u8ba1",total_dl:"\u603b\u4e0b\u8f7d\u6b21\u6570",total_files:"\u6587\u4ef6\u6570",total_size:"\u603b\u5927\u5c0f",plat_used:"\u5df2\u7528\u5e73\u53f0",items_found:"\u4e2a\u5a92\u4f53",select_all:"\u5168\u9009",loading_media:"\u52a0\u8f7d\u5a92\u4f53\u4e2d...",favorites_label:"\u6536\u85cf:",add_fav:"+ \u6dfb\u52a0",auto_paste:"\u81ea\u52a8\u7c98\u8d34",shortcut_dl:"\u4e0b\u8f7d",shortcut_batch:"\u6279\u91cf"}
 };
 function t(k){return L[lang][k]||k}
 
@@ -1084,6 +1085,50 @@ function applyLang(){
     document.querySelector('#emptyHistory p').textContent=t('empty_h');
     document.querySelector('#emptyBrowse p').textContent=t('empty_b');
     document.getElementById('dropzone').textContent=t('drop');
+    // Settings page
+    document.getElementById('setCookieTitle').textContent=t('cookie_title');
+    document.getElementById('setCookieDesc').textContent=t('cookie_desc');
+    document.getElementById('cookieInput').placeholder=t('cookie_ph');
+    document.getElementById('btnSaveCookie').textContent=t('save_cookies');
+    document.getElementById('btnClearCookie').textContent=t('clear');
+    document.getElementById('setFavTitle').textContent=t('fav_title');
+    document.getElementById('setFavDesc').textContent=t('fav_desc');
+    document.getElementById('btnAddFav').textContent=t('add');
+    document.getElementById('setKbTitle').textContent=t('kb_title');
+    document.getElementById('setKbDesc').textContent=t('kb_desc');
+    const kbSpans=document.querySelectorAll('#kbList span');
+    if(kbSpans[0])kbSpans[0].textContent=t('kb_enter');
+    if(kbSpans[1])kbSpans[1].textContent=t('kb_batch');
+    if(kbSpans[2])kbSpans[2].textContent=t('kb_paste');
+    if(kbSpans[3])kbSpans[3].textContent=t('kb_nav');
+    // History page
+    document.getElementById('historyTitle').textContent=t('dl_history');
+    document.getElementById('btnViewFiles').textContent=t('view_files');
+    document.getElementById('serverFilesTitle').textContent=t('server_files');
+    document.getElementById('btnDlZip').textContent=t('dl_zip');
+    // Stats page
+    document.getElementById('labelTotalDl').textContent=t('total_dl');
+    document.getElementById('labelTotalFiles').textContent=t('total_files');
+    document.getElementById('labelTotalSize').textContent=t('total_size');
+    document.getElementById('labelPlatUsed').textContent=t('plat_used');
+    document.getElementById('byPlatformTitle').textContent=t('by_platform');
+    // Browse page
+    document.getElementById('itemsFoundLabel').textContent=t('items_found');
+    document.getElementById('btnSelectAll').textContent=t('select_all');
+    document.getElementById('favLabel').textContent=t('favorites_label');
+    document.getElementById('btnAddFavBrowse').textContent=t('add_fav');
+    document.getElementById('loadingMediaText').textContent=t('loading_media');
+    // Shortcuts
+    document.getElementById('scAutoPaste').textContent=t('auto_paste');
+    document.getElementById('scDownload').textContent=t('shortcut_dl');
+    document.getElementById('scBatch').textContent=t('shortcut_batch');
+    // Batch modal
+    document.getElementById('batchTitle').textContent=lang==='zh'?'\u6279\u91cf\u4e0b\u8f7d':'Batch Download';
+    document.getElementById('batchDesc').textContent=lang==='zh'?'\u6bcf\u884c\u7c98\u8d34\u4e00\u4e2a\u94fe\u63a5':'Paste multiple URLs, one per line';
+    document.getElementById('btnBatchCancel').textContent=t('cancel');
+    document.getElementById('btnBatchStart').textContent=t('start');
+    // Re-render favorites with correct language
+    renderFavorites();
 }
 
 // ===== Platform Detection =====
@@ -1246,7 +1291,7 @@ function renderFavorites(){
     const chips=document.getElementById('favChips');chips.innerHTML='';
     favorites.forEach(f=>{const c=document.createElement('button');c.className='btn btn-outline btn-sm';c.style.cssText='padding:4px 10px;font-size:11px';c.textContent='@'+f;c.onclick=()=>{document.getElementById('browseUser').value=f;browseUserMedia()};chips.appendChild(c)});
     const list=document.getElementById('favList');list.innerHTML='';
-    if(!favorites.length){list.innerHTML='<span style="color:var(--t2);font-size:13px">No favorites yet</span>';return}
+    if(!favorites.length){list.innerHTML='<span style="color:var(--t2);font-size:13px">'+t('no_fav')+'</span>';return}
     favorites.forEach(f=>{const el=document.createElement('div');el.className='fav-item';el.innerHTML=`<div><span class="fav-item-name">@${esc(f)}</span></div><button class="fav-del" onclick="removeFavorite('${esc(f)}')">&#10005;</button>`;el.querySelector('.fav-item-name').onclick=()=>{document.getElementById('browseUser').value=f;switchPage('browse');browseUserMedia()};list.appendChild(el)});
 }
 function addFavorite(){const name=document.getElementById('browseUser').value.trim().replace(/^@/,'');if(!name||favorites.includes(name))return;favorites.push(name);localStorage.setItem('favorites',JSON.stringify(favorites));renderFavorites();toast(t('added_fav'),'success')}
@@ -1286,9 +1331,9 @@ function countUp(id,target){
 }
 
 // ===== Cookies =====
-async function saveCookies(){const v=document.getElementById('cookieInput').value.trim();try{const resp=await fetch('/api/cookies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookies:v})});const data=await resp.json();document.getElementById('cookieStatus').textContent=v?`${data.count} cookies saved`:'Cleared';toast(t('cookie_saved'),'success')}catch(e){toast(e.message,'error')}}
-async function clearCookies(){document.getElementById('cookieInput').value='';await fetch('/api/cookies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookies:''})});document.getElementById('cookieStatus').textContent='Cleared';toast(t('cookie_cleared'),'info')}
-async function loadCookieStatus(){try{const resp=await fetch('/api/cookies');const data=await resp.json();if(data.has_cookies)document.getElementById('cookieStatus').textContent=`${data.count} cookies loaded`}catch(e){}}
+async function saveCookies(){const v=document.getElementById('cookieInput').value.trim();try{const resp=await fetch('/api/cookies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookies:v})});const data=await resp.json();document.getElementById('cookieStatus').textContent=v?`${data.count} ${lang==='zh'?'\u4e2a Cookie \u5df2\u4fdd\u5b58':'cookies saved'}`:(lang==='zh'?'\u5df2\u6e05\u9664':'Cleared');toast(t('cookie_saved'),'success')}catch(e){toast(e.message,'error')}}
+async function clearCookies(){document.getElementById('cookieInput').value='';await fetch('/api/cookies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cookies:''})});document.getElementById('cookieStatus').textContent=lang==='zh'?'\u5df2\u6e05\u9664':'Cleared';toast(t('cookie_cleared'),'info')}
+async function loadCookieStatus(){try{const resp=await fetch('/api/cookies');const data=await resp.json();if(data.has_cookies)document.getElementById('cookieStatus').textContent=`${data.count} ${lang==='zh'?'\u4e2a Cookie \u5df2\u52a0\u8f7d':'cookies loaded'}`}catch(e){}}
 
 // ===== Toast =====
 function toast(msg,type='info'){const c=document.getElementById('toasts');const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;c.appendChild(el);setTimeout(()=>{el.classList.add('toast-out');setTimeout(()=>el.remove(),300)},3000)}
