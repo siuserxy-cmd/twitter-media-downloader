@@ -51,6 +51,11 @@ def create_app(output_dir: str = "./downloads"):
     def index():
         return render_template("index.html")
 
+    @app.route("/docs/<path:filepath>")
+    def serve_docs(filepath):
+        docs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "docs")
+        return send_from_directory(docs_dir, filepath)
+
     # ===== Download APIs =====
 
     @app.route("/api/download", methods=["POST"])

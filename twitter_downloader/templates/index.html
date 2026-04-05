@@ -547,6 +547,68 @@ textarea.cookie-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-g
 .wave-divider{height:40px;margin:20px 0;overflow:hidden;position:relative}
 .wave-divider svg{position:absolute;bottom:0;width:100%}
 
+/* ===== Author Card ===== */
+.author-card{
+    display:flex;gap:18px;align-items:center;margin-top:40px;
+    background:var(--bg2);border:1px solid var(--glass-bd);border-radius:var(--r);
+    padding:24px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    box-shadow:0 8px 32px rgba(0,0,0,.12);
+    position:relative;z-index:0;overflow:hidden;
+    animation:fadeSlideUp .6s ease;
+}
+.author-card::before{
+    content:'';position:absolute;inset:-1.5px;z-index:-1;border-radius:calc(var(--r) + 1.5px);
+    background:conic-gradient(from var(--card-angle,0deg),var(--ac),var(--purple),var(--pink),var(--ok),var(--ac));
+    opacity:.2;animation:cardBorderSpin 4s linear infinite;transition:opacity .4s;
+}
+.author-card:hover::before{opacity:.6}
+.author-card:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.2),0 0 30px var(--ac-glow)}
+.author-avatar{
+    width:80px;height:80px;border-radius:50%;object-fit:cover;flex-shrink:0;
+    border:2px solid var(--glass-bd);
+    box-shadow:0 4px 20px rgba(0,0,0,.2);
+    transition:all .4s cubic-bezier(.4,0,.2,1);
+}
+.author-card:hover .author-avatar{
+    border-color:var(--ac);
+    box-shadow:0 0 20px var(--ac-glow);
+    transform:scale(1.08) rotate(5deg);
+}
+.author-info{flex:1;min-width:0}
+.author-name{font-size:18px;font-weight:800;margin-bottom:2px}
+.author-role{font-size:12px;color:var(--ac);font-weight:600;margin-bottom:6px}
+.author-desc{font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px}
+.author-wechat{
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+    font-size:13px;color:var(--t2);margin-bottom:12px;
+}
+.author-wechat code{
+    background:rgba(29,155,240,.1);color:var(--ac);padding:2px 8px;
+    border-radius:6px;font-size:13px;font-weight:700;
+    border:1px solid rgba(29,155,240,.2);
+}
+.wechat-icon{font-size:16px}
+.wechat-tip{font-size:11px;color:var(--t2);opacity:.7}
+.author-links{display:flex;gap:8px;flex-wrap:wrap}
+.author-link{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;
+    color:var(--t1);text-decoration:none;cursor:pointer;
+    border:1px solid var(--glass-bd);background:var(--glass);
+    backdrop-filter:blur(8px);transition:all .3s cubic-bezier(.4,0,.2,1);
+}
+.author-link:hover{
+    border-color:var(--ac);color:var(--ac);
+    box-shadow:0 0 15px var(--ac-glow);transform:translateY(-2px);
+}
+.wechat-copy{font-family:inherit}
+.wechat-copy.copied{border-color:var(--ok);color:var(--ok);box-shadow:0 0 15px rgba(0,186,124,.3)}
+@media(max-width:520px){
+    .author-card{flex-direction:column;text-align:center}
+    .author-links{justify-content:center}
+    .author-wechat{justify-content:center}
+}
+
 /* ===== Footer ===== */
 .footer{
     text-align:center;margin-top:40px;color:var(--t2);font-size:12px;animation:fadeSlideUp 1s ease;
@@ -979,10 +1041,33 @@ textarea.cookie-inp:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-g
         </div>
     </div>
 
-    <!-- Footer -->
+    <!-- Author Card + Footer -->
+    <div class="author-card">
+        <img src="/docs/author.jpeg" alt="小伟" class="author-avatar">
+        <div class="author-info">
+            <div class="author-name">小伟</div>
+            <div class="author-role" id="authorRole">独立开发者 / AI 语音对话机器人方案商</div>
+            <div class="author-desc" id="authorDesc">AI 语音对话机器人方案设计 & 代工厂，提供从方案到量产的一站式服务。</div>
+            <div class="author-wechat">
+                <span class="wechat-icon">💬</span>
+                <span id="authorWechatLabel">微信号：</span><code>siuserxiaowei</code>
+                <span class="wechat-tip" id="authorWechatTip">（加好友请备注：GitHub）</span>
+            </div>
+            <div class="author-links">
+                <a href="https://github.com/siuserxy-cmd" target="_blank" class="author-link">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    GitHub
+                </a>
+                <button class="author-link wechat-copy" onclick="copyWechat()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    <span id="copyWechatText">复制微信号</span>
+                </button>
+            </div>
+        </div>
+    </div>
     <div class="footer">
         <p>Powered by yt-dlp + gallery-dl + twscrape</p>
-        <p style="margin-top:4px"><a href="https://github.com/siuserxy-cmd/twitter-media-downloader" target="_blank">GitHub</a></p>
+        <p style="margin-top:4px"><a href="https://github.com/siuserxy-cmd/twitter-media-downloader" target="_blank">GitHub</a> · Made by 小伟</p>
     </div>
 </div>
 
@@ -1010,8 +1095,8 @@ let favorites=JSON.parse(localStorage.getItem('favorites')||'[]');
 
 // ===== i18n =====
 const L={
-en:{subtitle:"All-in-one media download tool",download:"Download",browse_user:"Browse User",history:"History",stats:"Stats",settings:"Settings",single:"Single",timeline:"Timeline",dl:"Download",batch:"Batch",ph:"Paste any video/image link here...",empty_q:"Paste a link to start downloading",empty_h:"No downloads yet",empty_b:"Enter a username to browse their media",downloading:"Downloading...",done:"Done",failed:"Failed",dl_complete:"Download complete!",dl_failed:"Download failed",dl_selected:"Download Selected",browse_ph:"Enter Twitter @username...",cookie_saved:"Cookies saved",cookie_cleared:"Cookies cleared",added_fav:"Added to favorites",removed_fav:"Removed from favorites",no_data:"No data yet",drop:"Drop URL here",cancel:"Cancel",start:"Start Download",cookie_title:"Cookie Import",cookie_desc:"Import browser cookies to access private/age-restricted content",cookie_ph:"Paste cookies here: name1=value1; name2=value2; ...",save_cookies:"Save Cookies",clear:"Clear",fav_title:"Saved Users / Favorites",fav_desc:"Quick access to your favorite accounts",no_fav:"No favorites yet",add:"Add",kb_title:"Keyboard Shortcuts",kb_desc:"Quick actions for power users",kb_enter:"Start download",kb_batch:"Open batch download",kb_paste:"Auto-paste URL",kb_nav:"Switch pages (on nav)",dl_history:"Download History",view_files:"View Files",server_files:"Server Files",dl_zip:"Download as ZIP",by_platform:"By Platform",total_dl:"Total Downloads",total_files:"Files Saved",total_size:"Total Size",plat_used:"Platforms Used",items_found:"items found",select_all:"Select All",loading_media:"Loading media...",favorites_label:"Favorites:",add_fav:"+ Add",auto_paste:"auto-paste",shortcut_dl:"download",shortcut_batch:"batch"},
-zh:{subtitle:"\u5168\u5e73\u53f0\u5a92\u4f53\u4e0b\u8f7d\u5de5\u5177",download:"\u4e0b\u8f7d",browse_user:"\u6d4f\u89c8\u535a\u4e3b",history:"\u5386\u53f2\u8bb0\u5f55",stats:"\u7edf\u8ba1",settings:"\u8bbe\u7f6e",single:"\u5355\u6761",timeline:"\u65f6\u95f4\u7ebf",dl:"\u4e0b\u8f7d",batch:"\u6279\u91cf",ph:"\u7c98\u8d34\u4efb\u610f\u89c6\u9891/\u56fe\u7247\u94fe\u63a5...",empty_q:"\u7c98\u8d34\u94fe\u63a5\u5f00\u59cb\u4e0b\u8f7d",empty_h:"\u6682\u65e0\u4e0b\u8f7d\u8bb0\u5f55",empty_b:"\u8f93\u5165\u7528\u6237\u540d\u6d4f\u89c8\u5176\u5a92\u4f53\u5185\u5bb9",downloading:"\u4e0b\u8f7d\u4e2d...",done:"\u5b8c\u6210",failed:"\u5931\u8d25",dl_complete:"\u4e0b\u8f7d\u5b8c\u6210\uff01",dl_failed:"\u4e0b\u8f7d\u5931\u8d25",dl_selected:"\u4e0b\u8f7d\u9009\u4e2d",browse_ph:"\u8f93\u5165 Twitter @\u7528\u6237\u540d...",cookie_saved:"Cookie \u5df2\u4fdd\u5b58",cookie_cleared:"Cookie \u5df2\u6e05\u9664",added_fav:"\u5df2\u6dfb\u52a0\u6536\u85cf",removed_fav:"\u5df2\u79fb\u9664\u6536\u85cf",no_data:"\u6682\u65e0\u6570\u636e",drop:"\u62d6\u653e\u94fe\u63a5\u5230\u8fd9\u91cc",cancel:"\u53d6\u6d88",start:"\u5f00\u59cb\u4e0b\u8f7d",cookie_title:"Cookie \u5bfc\u5165",cookie_desc:"\u5bfc\u5165\u6d4f\u89c8\u5668 Cookie \u4ee5\u8bbf\u95ee\u79c1\u5bc6/\u5e74\u9f84\u9650\u5236\u5185\u5bb9",cookie_ph:"\u5728\u6b64\u7c98\u8d34 Cookie: name1=value1; name2=value2; ...",save_cookies:"\u4fdd\u5b58 Cookie",clear:"\u6e05\u9664",fav_title:"\u6536\u85cf\u7528\u6237",fav_desc:"\u5feb\u901f\u8bbf\u95ee\u4f60\u6536\u85cf\u7684\u8d26\u53f7",no_fav:"\u6682\u65e0\u6536\u85cf",add:"\u6dfb\u52a0",kb_title:"\u952e\u76d8\u5feb\u6377\u952e",kb_desc:"\u9ad8\u7ea7\u7528\u6237\u5feb\u6377\u64cd\u4f5c",kb_enter:"\u5f00\u59cb\u4e0b\u8f7d",kb_batch:"\u6253\u5f00\u6279\u91cf\u4e0b\u8f7d",kb_paste:"\u81ea\u52a8\u7c98\u8d34\u94fe\u63a5",kb_nav:"\u5207\u6362\u9875\u9762\uff08\u5bfc\u822a\u680f\uff09",dl_history:"\u4e0b\u8f7d\u5386\u53f2",view_files:"\u67e5\u770b\u6587\u4ef6",server_files:"\u670d\u52a1\u5668\u6587\u4ef6",dl_zip:"\u6253\u5305\u4e0b\u8f7d ZIP",by_platform:"\u6309\u5e73\u53f0\u7edf\u8ba1",total_dl:"\u603b\u4e0b\u8f7d\u6b21\u6570",total_files:"\u6587\u4ef6\u6570",total_size:"\u603b\u5927\u5c0f",plat_used:"\u5df2\u7528\u5e73\u53f0",items_found:"\u4e2a\u5a92\u4f53",select_all:"\u5168\u9009",loading_media:"\u52a0\u8f7d\u5a92\u4f53\u4e2d...",favorites_label:"\u6536\u85cf:",add_fav:"+ \u6dfb\u52a0",auto_paste:"\u81ea\u52a8\u7c98\u8d34",shortcut_dl:"\u4e0b\u8f7d",shortcut_batch:"\u6279\u91cf"}
+en:{subtitle:"All-in-one media download tool",download:"Download",browse_user:"Browse User",history:"History",stats:"Stats",settings:"Settings",single:"Single",timeline:"Timeline",dl:"Download",batch:"Batch",ph:"Paste any video/image link here...",empty_q:"Paste a link to start downloading",empty_h:"No downloads yet",empty_b:"Enter a username to browse their media",downloading:"Downloading...",done:"Done",failed:"Failed",dl_complete:"Download complete!",dl_failed:"Download failed",dl_selected:"Download Selected",browse_ph:"Enter Twitter @username...",cookie_saved:"Cookies saved",cookie_cleared:"Cookies cleared",added_fav:"Added to favorites",removed_fav:"Removed from favorites",no_data:"No data yet",drop:"Drop URL here",cancel:"Cancel",start:"Start Download",cookie_title:"Cookie Import",cookie_desc:"Import browser cookies to access private/age-restricted content",cookie_ph:"Paste cookies here: name1=value1; name2=value2; ...",save_cookies:"Save Cookies",clear:"Clear",fav_title:"Saved Users / Favorites",fav_desc:"Quick access to your favorite accounts",no_fav:"No favorites yet",add:"Add",kb_title:"Keyboard Shortcuts",kb_desc:"Quick actions for power users",kb_enter:"Start download",kb_batch:"Open batch download",kb_paste:"Auto-paste URL",kb_nav:"Switch pages (on nav)",dl_history:"Download History",view_files:"View Files",server_files:"Server Files",dl_zip:"Download as ZIP",by_platform:"By Platform",total_dl:"Total Downloads",total_files:"Files Saved",total_size:"Total Size",plat_used:"Platforms Used",items_found:"items found",select_all:"Select All",loading_media:"Loading media...",favorites_label:"Favorites:",add_fav:"+ Add",auto_paste:"auto-paste",shortcut_dl:"download",shortcut_batch:"batch",author_role:"Indie Developer / AI Voice Robot Solution Provider",author_desc:"AI voice conversation robot solution design & OEM factory, one-stop service from design to mass production.",wechat_label:"WeChat: ",wechat_tip:"(add with note: GitHub)",copy_wechat:"Copy WeChat ID"},
+zh:{subtitle:"\u5168\u5e73\u53f0\u5a92\u4f53\u4e0b\u8f7d\u5de5\u5177",download:"\u4e0b\u8f7d",browse_user:"\u6d4f\u89c8\u535a\u4e3b",history:"\u5386\u53f2\u8bb0\u5f55",stats:"\u7edf\u8ba1",settings:"\u8bbe\u7f6e",single:"\u5355\u6761",timeline:"\u65f6\u95f4\u7ebf",dl:"\u4e0b\u8f7d",batch:"\u6279\u91cf",ph:"\u7c98\u8d34\u4efb\u610f\u89c6\u9891/\u56fe\u7247\u94fe\u63a5...",empty_q:"\u7c98\u8d34\u94fe\u63a5\u5f00\u59cb\u4e0b\u8f7d",empty_h:"\u6682\u65e0\u4e0b\u8f7d\u8bb0\u5f55",empty_b:"\u8f93\u5165\u7528\u6237\u540d\u6d4f\u89c8\u5176\u5a92\u4f53\u5185\u5bb9",downloading:"\u4e0b\u8f7d\u4e2d...",done:"\u5b8c\u6210",failed:"\u5931\u8d25",dl_complete:"\u4e0b\u8f7d\u5b8c\u6210\uff01",dl_failed:"\u4e0b\u8f7d\u5931\u8d25",dl_selected:"\u4e0b\u8f7d\u9009\u4e2d",browse_ph:"\u8f93\u5165 Twitter @\u7528\u6237\u540d...",cookie_saved:"Cookie \u5df2\u4fdd\u5b58",cookie_cleared:"Cookie \u5df2\u6e05\u9664",added_fav:"\u5df2\u6dfb\u52a0\u6536\u85cf",removed_fav:"\u5df2\u79fb\u9664\u6536\u85cf",no_data:"\u6682\u65e0\u6570\u636e",drop:"\u62d6\u653e\u94fe\u63a5\u5230\u8fd9\u91cc",cancel:"\u53d6\u6d88",start:"\u5f00\u59cb\u4e0b\u8f7d",cookie_title:"Cookie \u5bfc\u5165",cookie_desc:"\u5bfc\u5165\u6d4f\u89c8\u5668 Cookie \u4ee5\u8bbf\u95ee\u79c1\u5bc6/\u5e74\u9f84\u9650\u5236\u5185\u5bb9",cookie_ph:"\u5728\u6b64\u7c98\u8d34 Cookie: name1=value1; name2=value2; ...",save_cookies:"\u4fdd\u5b58 Cookie",clear:"\u6e05\u9664",fav_title:"\u6536\u85cf\u7528\u6237",fav_desc:"\u5feb\u901f\u8bbf\u95ee\u4f60\u6536\u85cf\u7684\u8d26\u53f7",no_fav:"\u6682\u65e0\u6536\u85cf",add:"\u6dfb\u52a0",kb_title:"\u952e\u76d8\u5feb\u6377\u952e",kb_desc:"\u9ad8\u7ea7\u7528\u6237\u5feb\u6377\u64cd\u4f5c",kb_enter:"\u5f00\u59cb\u4e0b\u8f7d",kb_batch:"\u6253\u5f00\u6279\u91cf\u4e0b\u8f7d",kb_paste:"\u81ea\u52a8\u7c98\u8d34\u94fe\u63a5",kb_nav:"\u5207\u6362\u9875\u9762\uff08\u5bfc\u822a\u680f\uff09",dl_history:"\u4e0b\u8f7d\u5386\u53f2",view_files:"\u67e5\u770b\u6587\u4ef6",server_files:"\u670d\u52a1\u5668\u6587\u4ef6",dl_zip:"\u6253\u5305\u4e0b\u8f7d ZIP",by_platform:"\u6309\u5e73\u53f0\u7edf\u8ba1",total_dl:"\u603b\u4e0b\u8f7d\u6b21\u6570",total_files:"\u6587\u4ef6\u6570",total_size:"\u603b\u5927\u5c0f",plat_used:"\u5df2\u7528\u5e73\u53f0",items_found:"\u4e2a\u5a92\u4f53",select_all:"\u5168\u9009",loading_media:"\u52a0\u8f7d\u5a92\u4f53\u4e2d...",favorites_label:"\u6536\u85cf:",add_fav:"+ \u6dfb\u52a0",auto_paste:"\u81ea\u52a8\u7c98\u8d34",shortcut_dl:"\u4e0b\u8f7d",shortcut_batch:"\u6279\u91cf",author_role:"\u72ec\u7acb\u5f00\u53d1\u8005 / AI \u8bed\u97f3\u5bf9\u8bdd\u673a\u5668\u4eba\u65b9\u6848\u5546",author_desc:"AI \u8bed\u97f3\u5bf9\u8bdd\u673a\u5668\u4eba\u65b9\u6848\u8bbe\u8ba1 & \u4ee3\u5de5\u5382\uff0c\u63d0\u4f9b\u4ece\u65b9\u6848\u5230\u91cf\u4ea7\u7684\u4e00\u7ad9\u5f0f\u670d\u52a1\u3002",wechat_label:"\u5fae\u4fe1\u53f7\uff1a",wechat_tip:"\uff08\u52a0\u597d\u53cb\u8bf7\u5907\u6ce8\uff1aGitHub\uff09",copy_wechat:"\u590d\u5236\u5fae\u4fe1\u53f7"}
 };
 function t(k){return L[lang][k]||k}
 
@@ -1127,6 +1212,12 @@ function applyLang(){
     document.getElementById('batchDesc').textContent=lang==='zh'?'\u6bcf\u884c\u7c98\u8d34\u4e00\u4e2a\u94fe\u63a5':'Paste multiple URLs, one per line';
     document.getElementById('btnBatchCancel').textContent=t('cancel');
     document.getElementById('btnBatchStart').textContent=t('start');
+    // Author card
+    document.getElementById('authorRole').textContent=t('author_role');
+    document.getElementById('authorDesc').textContent=t('author_desc');
+    document.getElementById('authorWechatLabel').textContent=t('wechat_label');
+    document.getElementById('authorWechatTip').textContent=t('wechat_tip');
+    document.getElementById('copyWechatText').textContent=t('copy_wechat');
     // Re-render favorites with correct language
     renderFavorites();
 }
@@ -1337,6 +1428,18 @@ async function loadCookieStatus(){try{const resp=await fetch('/api/cookies');con
 
 // ===== Toast =====
 function toast(msg,type='info'){const c=document.getElementById('toasts');const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;c.appendChild(el);setTimeout(()=>{el.classList.add('toast-out');setTimeout(()=>el.remove(),300)},3000)}
+
+// ===== Copy WeChat =====
+function copyWechat(){
+    navigator.clipboard.writeText('siuserxiaowei').then(()=>{
+        const btn=document.querySelector('.wechat-copy');
+        const span=document.getElementById('copyWechatText');
+        btn.classList.add('copied');
+        span.textContent=lang==='zh'?'\u5df2\u590d\u5236!':'Copied!';
+        toast(lang==='zh'?'\u5fae\u4fe1\u53f7\u5df2\u590d\u5236':'WeChat ID copied','success');
+        setTimeout(()=>{btn.classList.remove('copied');span.textContent=t('copy_wechat')},2000);
+    });
+}
 
 // ===== Utils =====
 function fmtSize(b){if(!b||b===0)return'0 B';const k=1024,s=['B','KB','MB','GB'];const i=Math.floor(Math.log(b)/Math.log(k));return parseFloat((b/Math.pow(k,i)).toFixed(1))+' '+s[i]}
