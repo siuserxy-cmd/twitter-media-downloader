@@ -35,6 +35,9 @@ stats_lock = threading.Lock()
 
 # Cookie 存储
 saved_cookies = {}
+# 本地运行时使用 Chrome cookies，Docker/云端运行时为 None
+import shutil as _shutil
+cookies_from_browser = ("chrome",) if _shutil.which("google-chrome") or os.path.exists("/Applications/Google Chrome.app") else None
 
 
 def create_app(output_dir: str = "./downloads"):
@@ -96,6 +99,7 @@ def create_app(output_dir: str = "./downloads"):
                     progress_callback=on_progress,
                     quality=quality,
                     cookies=saved_cookies.get("global"),
+                    cookies_from_browser=cookies_from_browser,
                 ) as dl:
                     if mode == "user":
                         result = dl.download_user_media(url, count=count)
@@ -194,6 +198,7 @@ def create_app(output_dir: str = "./downloads"):
                                 progress_callback=on_progress,
                                 quality=q,
                                 cookies=saved_cookies.get("global"),
+                                cookies_from_browser=cookies_from_browser,
                             ) as dl:
                                 result = dl.download_media(u)
 
@@ -308,6 +313,7 @@ def create_app(output_dir: str = "./downloads"):
                 output_dir=app.config["OUTPUT_DIR"],
                 quality=quality,
                 cookies=saved_cookies.get("global"),
+                cookies_from_browser=cookies_from_browser,
             ) as dl:
                 user_dir = Path(app.config["OUTPUT_DIR"]) / "twitter" / dl._sanitize_filename(username)
                 user_dir.mkdir(parents=True, exist_ok=True)
@@ -492,5 +498,23 @@ def create_app(output_dir: str = "./downloads"):
         url = data.get("url", "").strip()
         platform = MediaDownloader.detect_platform(url)
         return jsonify({"platform": platform})
+
+    # ===== Browser Cookie Settings =====
+
+    @app.route("/api/settings/browser-cookies", methods=["GET"])
+    def api_get_browser_cookies():
+        browser = cookies_from_browser[0] if isinstance(cookies_from_browser, tuple) else cookies_from_browser
+        return jsonify({"browser": browser})
+
+    @app.route("/api/settings/browser-cookies", methods=["POST"])
+    def api_set_browser_cookies():
+        global cookies_from_browser
+        data = request.get_json()
+        browser = data.get("browser", "").strip().lower()
+        valid = ["chrome", "firefox", "safari", "edge", "opera", "brave", ""]
+        if browser not in valid:
+            return jsonify({"error": f"Invalid browser. Choose from: {', '.join(valid)}"}), 400
+        cookies_from_browser = (browser,) if browser else None
+        return jsonify({"success": True, "browser": browser})
 
     return app

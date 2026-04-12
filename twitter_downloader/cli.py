@@ -16,7 +16,7 @@ def main():
     parser.add_argument("-u", "--user", action="store_true", help="Download user's media timeline")
     parser.add_argument("-c", "--count", type=int, default=20, help="Number of tweets to fetch for user timeline (default: 20)")
     parser.add_argument("--web", action="store_true", help="Launch web GUI")
-    parser.add_argument("--port", type=int, default=5000, help="Web GUI port (default: 5000)")
+    parser.add_argument("--port", type=int, default=5001, help="Web GUI port (default: 5001)")
     parser.add_argument("--no-archive", action="store_true", help="Disable download archive (allow re-downloads)")
 
     args = parser.parse_args()

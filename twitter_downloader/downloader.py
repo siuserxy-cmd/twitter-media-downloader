@@ -75,6 +75,11 @@ class DownloadArchive:
             "  downloaded_at DATETIME DEFAULT CURRENT_TIMESTAMP"
             ")"
         )
+        # 兼容旧数据库：如果缺少 platform 列则添加
+        try:
+            self.conn.execute("SELECT platform FROM archive LIMIT 1")
+        except sqlite3.OperationalError:
+            self.conn.execute("ALTER TABLE archive ADD COLUMN platform TEXT DEFAULT ''")
         self.conn.commit()
 
     def has(self, url: str) -> bool:
@@ -104,12 +109,14 @@ class MediaDownloader:
         cookies: Optional[dict] = None,
         progress_callback: Optional[Callable] = None,
         quality: str = "best",
+        cookies_from_browser=None,
     ):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.cookies = cookies or {}
         self.progress_callback = progress_callback
         self.quality = quality
+        self.cookies_from_browser = cookies_from_browser
         self.scraper = TwitterScraper(cookies=cookies)
 
         self.archive = None
@@ -183,13 +190,113 @@ class MediaDownloader:
             return False
 
     def download_via_ytdlp(self, url: str, save_dir: str, filename_prefix: str = "") -> dict:
-        """使用 yt-dlp 下载任意平台的媒体"""
+        """使用 yt-dlp 下载任意平台的媒体，优先使用系统 yt-dlp CLI"""
         fmt = QUALITY_MAP.get(self.quality, QUALITY_MAP["best"])
 
         outtmpl = os.path.join(save_dir, f"{filename_prefix}%(title).80s_%(id)s.%(ext)s")
         if filename_prefix:
             outtmpl = os.path.join(save_dir, f"{filename_prefix}.%(ext)s")
 
+        # 优先使用系统 yt-dlp CLI (版本更新，支持更好)
+        result = self._download_via_cli(url, save_dir, outtmpl, fmt)
+        if result is not None:
+            return result
+
+        # 降级到 Python yt-dlp 库
+        return self._download_via_lib(url, outtmpl, fmt)
+
+    def _download_via_cli(self, url: str, save_dir: str, outtmpl: str, fmt: str) -> Optional[dict]:
+        """使用系统 yt-dlp CLI 下载"""
+        import subprocess
+        import shutil
+
+        ytdlp_path = shutil.which("yt-dlp")
+        if not ytdlp_path:
+            return None  # CLI 不可用，降级到库
+
+        cmd = [
+            ytdlp_path,
+            "-f", fmt,
+            "-o", outtmpl,
+            "--merge-output-format", "mp4",
+            "--no-write-info-json",
+            "--no-write-thumbnail",
+            "--print", "after_move:>>>%(filepath)s<<<%(title)s<<<%(duration)s<<<%(uploader)s",
+        ]
+
+        if self.cookies_from_browser:
+            browser = self.cookies_from_browser[0] if isinstance(self.cookies_from_browser, tuple) else self.cookies_from_browser
+            cmd.extend(["--cookies-from-browser", browser])
+
+        cmd.append(url)
+
+        try:
+            self._notify("status", message="Using system yt-dlp CLI...")
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=600,
+            )
+
+            if proc.returncode != 0:
+                error_msg = ""
+                if proc.stderr:
+                    for line in proc.stderr.strip().split("\n"):
+                        if "ERROR" in line:
+                            error_msg = line
+                            break
+                    if not error_msg:
+                        error_msg = proc.stderr.strip().split("\n")[-1]
+                self._notify("error", message=f"CLI failed: {error_msg}")
+                return None
+
+            # 解析 --print 输出: >>>filepath<<<title<<<duration<<<uploader
+            filename = ""
+            title = ""
+            duration = 0
+            uploader = ""
+
+            for line in proc.stdout.strip().split("\n"):
+                if line.startswith(">>>"):
+                    parts = line[3:].split("<<<")
+                    if len(parts) >= 1:
+                        filename = parts[0].strip()
+                    if len(parts) >= 2:
+                        title = parts[1].strip()
+                    if len(parts) >= 3:
+                        try:
+                            duration = int(float(parts[2].strip()))
+                        except (ValueError, TypeError):
+                            pass
+                    if len(parts) >= 4:
+                        uploader = parts[3].strip()
+                    break
+
+            # 如果 --print 没拿到文件路径，扫描目录
+            if not filename or not os.path.exists(filename):
+                for f in sorted(Path(save_dir).glob("*"), key=lambda x: x.stat().st_mtime, reverse=True):
+                    if f.is_file() and f.suffix in (".mp4", ".webm", ".mkv", ".m4a", ".mp3"):
+                        filename = str(f)
+                        break
+
+            if filename and os.path.exists(filename):
+                return {
+                    "success": True,
+                    "filename": os.path.basename(filename),
+                    "path": filename,
+                    "title": title,
+                    "duration": duration,
+                    "uploader": uploader,
+                    "thumbnail": "",
+                }
+
+            return None
+        except subprocess.TimeoutExpired:
+            self._notify("error", message="CLI download timed out (10min)")
+            return None
+        except Exception:
+            return None
+
+    def _download_via_lib(self, url: str, outtmpl: str, fmt: str) -> dict:
+        """使用 Python yt-dlp 库下载 (降级方案)"""
         ydl_opts = {
             "outtmpl": outtmpl,
             "format": fmt,
@@ -201,7 +308,12 @@ class MediaDownloader:
             "progress_hooks": [self._ytdlp_progress_hook],
         }
 
-        if self.cookies:
+        if self.cookies_from_browser:
+            if isinstance(self.cookies_from_browser, tuple):
+                ydl_opts["cookiesfrombrowser"] = self.cookies_from_browser
+            else:
+                ydl_opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
+        elif self.cookies:
             ydl_opts["http_headers"] = {
                 "Cookie": "; ".join(f"{k}={v}" for k, v in self.cookies.items()),
             }
@@ -213,7 +325,6 @@ class MediaDownloader:
                     return {"success": False, "error": "No info extracted"}
 
                 filename = ydl.prepare_filename(info)
-                # yt-dlp 可能合并后改扩展名
                 if not os.path.exists(filename):
                     base = os.path.splitext(filename)[0]
                     for ext in [".mp4", ".webm", ".mkv", ".m4a", ".mp3"]:
